@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>UAssetRegistry</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="UAssetAPI" Version="1.1.0" />
+  </ItemGroup>
+
+  <!--
+    CityHash 复用团队 ULocres 里的实现（逐行对齐 UE 的 CityHash64），
+    不自己造轮子。name batch 的哈希表必须正确，否则写出的 bin 在游戏里读不了。
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\external\ULocres\ULocres.csproj" />
+  </ItemGroup>
+
+  <!--
+    移植层：直接编译 submodule 里的上游源码，而不是引用它的 exe 项目。
+
+    原因：上游 UAssetRegistry.csproj 是 OutputType=Exe（带 Program.cs 的 CLI），
+    而 Blazor WASM 应用是自包含可执行文件，.NET 不允许自包含 Exe 引用非自包含 Exe
+    （NETSDK1150）。把源码编成库绕开这个限制，同时保留「边移植边改」的能力。
+
+    只包含 AssetRegistry/ 目录，排除上游的 Program.cs（CLI 入口）。
+    上游更新后需要重新核对目录结构，见 docs/project-structure.md。
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\external\UAssetRegistry\AssetRegistry\**\*.cs" LinkBase="Upstream" />
+    <!-- 这个文件在 Vendored/ 下有打了补丁的副本（tag map handle 的 bit63），
+         必须把上游那份排除掉，否则类型重复定义。 -->
+    <Compile Remove="..\..\external\UAssetRegistry\AssetRegistry\FAssetRegistryWriter.cs" />
+    <!-- 同理：FAssetData 在 Vendored/ 下保留了 FTopLevelAssetPath 的 ClassPackage 段。 -->
+    <Compile Remove="..\..\external\UAssetRegistry\AssetRegistry\FAssetData.cs" />
+  </ItemGroup>
+
+</Project>
